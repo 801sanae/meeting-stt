@@ -107,8 +107,8 @@ async def transcribe_with_azure_speech(audio_bytes: bytes) -> str:
 
     headers = {
         "Ocp-Apim-Subscription-Key": settings.azure_speech_key,
-        # 프런트엔드에서 업로드할 실제 포맷에 맞춰 조정 필요 (예: audio/wav, audio/ogg 등)
-        "Content-Type": "audio/webm",
+        # 프런트엔드에서 업로드하는 WAV(PCM) 포맷에 맞춰 Content-Type 설정
+        "Content-Type": "audio/wav",
         "Accept": "application/json",
     }
 
@@ -132,6 +132,10 @@ async def transcribe_with_azure_speech(audio_bytes: bytes) -> str:
         nbest = data.get("NBest")
         if isinstance(nbest, list) and nbest:
             text = nbest[0].get("Display") or nbest[0].get("Lexical")
+
+    # 빈 문자열이 반환될 때는 디버깅을 위해 원본 응답 일부를 로그로 출력
+    if text == "":
+        print("[STT] Azure Speech returned empty text. raw:", resp.text[:500])
 
     # text가 None 인 경우에만 에러로 간주. ""(빈 문자열)은 "인식된 발화 없음"으로 처리.
     if text is None:

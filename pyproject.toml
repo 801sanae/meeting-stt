@@ -16,4 +16,5 @@ dependencies = [
     "openai>=1.52.0",
     "langchain",
     "langchain-openai",
+    "langchain-core>=1.1.0",
 ]
