@@ -9,9 +9,9 @@
 
 ## Screenshots
 
-> 실제 레이아웃 예시는 아래 스크린샷을 참고하세요. (이미지는 `docs/` 아래에 위치시킵니다.)
+> 실제 레이아웃 예시는 아래 스크린샷을 참고하세요.
 
-![Meeting STT 메인 화면](docs/meeting-stt-main.png)
+![Meeting STT 메인 화면](app/static/img/ui_sample.png)
 
 ---
 
