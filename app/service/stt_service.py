@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from enum import Enum
+import asyncio
 
 from fastapi import HTTPException, status
 from sqlalchemy import func
@@ -114,8 +115,30 @@ async def transcribe_with_azure_speech(audio_bytes: bytes) -> str:
 
     params = {"language": language}
 
+    # 일시적인 네트워크 끊김(ReadError 등)을 완화하기 위해 간단한 재시도 로직 적용
+    max_retries = 3
+    last_exc: Exception | None = None
+
     async with httpx.AsyncClient(timeout=30.0) as client:
-        resp = await client.post(url, params=params, headers=headers, content=audio_bytes)
+        for attempt in range(1, max_retries + 1):
+            try:
+                resp = await client.post(
+                    url,
+                    params=params,
+                    headers=headers,
+                    content=audio_bytes,
+                )
+                break
+            except httpx.RequestError as exc:
+                last_exc = exc
+                if attempt >= max_retries:
+                    # 네트워크 계층 오류 (ReadError 등)를 502로 변환
+                    raise HTTPException(
+                        status_code=status.HTTP_502_BAD_GATEWAY,
+                        detail=f"Azure Speech STT 네트워크 오류(재시도 {max_retries}회 실패): {exc}",
+                    ) from exc
+                # 간단한 선형 백오프 (1초, 2초, ...)
+                await asyncio.sleep(attempt)
 
     if resp.status_code != 200:
         raise HTTPException(
