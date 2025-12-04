@@ -27,7 +27,7 @@
 
 - **Frontend**
   - 순수 HTML + Tailwind CSS (CDN)
-  - Vanilla JS (`MediaRecorder`, `getUserMedia`) 로 브라우저 녹음
+  - Vanilla JS (`getUserMedia`, Web Audio API) 로 브라우저에서 PCM 캡처 + WAV 인코딩
 
 ---
 
@@ -117,6 +117,7 @@ uv run python main.py
 
 - 정적 프론트: `app/static/html/index.html`
   - Tailwind + 커스텀 CSS (`app/static/css/main.css`)
+  - 회의 UI/CRD 및 탭/쿼터 UI: `app/static/js/meetings_ui.js`
   - 녹음/업로드 JS: `app/static/js/recorder.js`
 
 ---
@@ -124,7 +125,7 @@ uv run python main.py
 ## 주요 API
 
 - `POST /meetings/record`
-  - Form-data: `audio` (UploadFile, `audio/webm`), `duration_seconds` (float)
+  - Form-data: `audio` (UploadFile, `audio/wav`), `duration_seconds` (float)
   - 처리: STT → 요약 → DB 저장
   - 응답: `MeetingRecordResponse { id, transcript, summary }`
 
@@ -143,13 +144,16 @@ uv run python main.py
 
 - 페이지 로드시:
   - 브라우저 녹음 지원 여부 검사
-  - `/meetings` 호출해 좌측 리스트 렌더링
+  - `/meetings` 호출해 좌측 리스트 렌더링 (`meetings_ui.js`)
 - `녹음 시작` 버튼:
-  - `getUserMedia` + `MediaRecorder` 로 오디오 캡처
+  - `getUserMedia` + Web Audio API (`AudioContext`, `ScriptProcessorNode`) 로 마이크 입력 PCM 캡처 (`recorder.js`)
 - `완료` 버튼:
-  - Blob(`audio/webm`) 생성 후 `/meetings/record` 로 업로드
-  - 응답의 transcript/summary 를 우측 STT/SUMMARY 탭에 표시
+  - 수집한 PCM을 16bit mono WAV 포맷으로 인코딩해 Blob(`audio/wav`) 생성
+  - `/meetings/record` 로 업로드
+  - 응답의 transcript/summary 를 우측 STT/SUMMARY 탭에 표시 (`meetings_ui.js`)
   - 리스트 재조회
+- **STT 쿼터 확인 버튼**:
+  - `GET /admin/stt/usage` 를 호출해 이번 달 Azure STT 사용량/쿼터/잔여 시간을 우측 상단에 표시
 - LEFT NAV 항목 클릭:
   - `/meetings/{id}` 호출해 해당 회의 내용 표시
 - X 버튼 클릭:
@@ -157,10 +161,27 @@ uv run python main.py
 
 ---
 
+## STT 백엔드 및 쿼터 관리
+
+- **Azure Speech Service (REST)**
+  - 입력 포맷: `audio/wav` (16bit mono PCM)
+  - 프론트엔드에서 Web Audio API 로 캡처한 PCM을 WAV 로 인코딩해 업로드
+- **월 무료 쿼터 관리 (기본 5시간)**
+  - 설정: `settings.stt_free_quota_hours_per_month` (기본값 5.0)
+  - `SttUsage` 테이블에 요청별 `duration_seconds` 를 기록
+  - `stt_service.ensure_can_use_azure_speech` 가 이번 요청 길이를 포함한 월 사용량을 계산하여 쿼터 초과 시 HTTP 429 반환
+- **Admin STT 사용량 조회**
+  - `GET /admin/stt/usage` : 이번 달 Azure Speech STT 사용 시간 / 쿼터 / 잔여 시간 조회
+  - `/meetings` 화면 우측 상단의 "STT 쿼터 확인" 버튼이 이 API 를 호출해 결과를 표시
+
 ## 주의사항
 
 - 실제 Azure 키, 기타 민감한 값은 **절대 git 에 커밋하지 않습니다.**
   - `.env` 는 로컬 전용 파일로 사용하고, 예시는 `env.example` 로 관리합니다.
 - Azure 키를 교체한 경우 GitHub Push Protection 에서 해당 시크릿을
   "rotated/allow" 처리해 주어야 이전 커밋도 푸시 가능합니다.
+  
+- Azure OpenAI 요약 단계에서는 콘텐츠 관리 정책에 따라 특정 발화가 **content filter** 에 걸릴 수 있습니다.
+  - 예: 응답 에러 코드 `content_filter`, `ResponsibleAIPolicyViolation` 등
+  - 이 경우 `POST /meetings/record` 가 400/502 로 실패할 수 있으며, 이는 Azure 정책에 따른 차단입니다.
 
