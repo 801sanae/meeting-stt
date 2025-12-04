@@ -14,11 +14,6 @@ let audioSampleRate = 44100;
 const startBtn = document.getElementById('startBtn');
 const stopBtn = document.getElementById('stopBtn');
 const statusEl = document.getElementById('status');
-const meetingListEl = document.getElementById('meetingList');
-const sttViewEl = document.getElementById('sttView');
-const summaryViewEl = document.getElementById('summaryView');
-const tabSttEl = document.getElementById('tabStt');
-const tabSummaryEl = document.getElementById('tabSummary');
 
 console.log('[Meeting-STT] 페이지 로드 완료');
 
@@ -36,138 +31,7 @@ if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
   statusEl.textContent = '녹음 준비 완료. "녹음 시작" 버튼을 눌러 주세요.';
 }
 
-// 탭 전환: STT / SUMMARY
-function activateTab(tab) {
-  const isStt = tab === 'stt';
-  if (!tabSttEl || !tabSummaryEl || !sttViewEl || !summaryViewEl) return;
-
-  if (isStt) {
-    tabSttEl.classList.add('bg-slate-900', 'font-semibold');
-    tabSummaryEl.classList.remove('bg-slate-900', 'font-semibold');
-    sttViewEl.classList.remove('hidden');
-    summaryViewEl.classList.add('hidden');
-  } else {
-    tabSummaryEl.classList.add('bg-slate-900', 'font-semibold');
-    tabSttEl.classList.remove('bg-slate-900', 'font-semibold');
-    summaryViewEl.classList.remove('hidden');
-    sttViewEl.classList.add('hidden');
-  }
-}
-
-tabSttEl?.addEventListener('click', () => activateTab('stt'));
-tabSummaryEl?.addEventListener('click', () => activateTab('summary'));
-
-// 회의 리스트 렌더링
-function renderMeetingList(items) {
-  if (!meetingListEl) return;
-  meetingListEl.innerHTML = '';
-
-  if (!items || items.length === 0) {
-    const empty = document.createElement('div');
-    empty.className = 'text-slate-300 text-xs';
-    empty.textContent = '아직 저장된 회의가 없습니다.';
-    meetingListEl.appendChild(empty);
-    return;
-  }
-
-  items.forEach((m) => {
-    const row = document.createElement('div');
-    row.className =
-      'group flex items-center px-3 py-2 rounded-lg bg-sky-800 hover:bg-sky-700 text-slate-50 text-xs cursor-pointer';
-
-    const created = new Date(m.created_at);
-    const label = created.toLocaleString('ko-KR', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-    });
-
-    const labelSpan = document.createElement('span');
-    labelSpan.className = 'flex-1';
-    labelSpan.textContent = label;
-
-    const deleteBtn = document.createElement('button');
-    deleteBtn.type = 'button';
-    deleteBtn.className =
-      'ml-2 w-4 h-4 flex items-center justify-center text-xs text-white opacity-0 group-hover:opacity-100 transition-opacity';
-    deleteBtn.textContent = '✕';
-
-    row.addEventListener('click', () => {
-      loadMeetingDetail(m.id);
-    });
-
-    deleteBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      deleteMeeting(m.id);
-    });
-
-    row.appendChild(labelSpan);
-    row.appendChild(deleteBtn);
-    meetingListEl.appendChild(row);
-  });
-}
-
-async function fetchMeetingList() {
-  try {
-    const resp = await fetch('/meetings');
-    if (!resp.ok) {
-      console.error('[Meeting-STT] 회의 리스트 조회 실패', resp.status);
-      return;
-    }
-    const data = await resp.json();
-    renderMeetingList(data);
-  } catch (err) {
-    console.error('[Meeting-STT] 회의 리스트 조회 에러', err);
-  }
-}
-
-async function loadMeetingDetail(id) {
-  try {
-    const resp = await fetch(`/meetings/${id}`);
-    if (!resp.ok) {
-      console.error('[Meeting-STT] 회의 상세 조회 실패', resp.status);
-      return;
-    }
-    const data = await resp.json();
-    console.log('[Meeting-STT] 회의 상세 transcript:', data.full_transcript);
-    console.log('[Meeting-STT] 회의 상세 summary:', data.summary);
-    currentMeetingId = id;
-    sttViewEl.textContent = data.full_transcript || '';
-    summaryViewEl.textContent = data.summary || '';
-  } catch (err) {
-    console.error('[Meeting-STT] 회의 상세 조회 에러', err);
-  }
-}
-
-async function deleteMeeting(id) {
-  if (!confirm('이 회의 기록을 삭제하시겠습니까?')) return;
-
-  try {
-    const resp = await fetch(`/meetings/${id}`, { method: 'DELETE' });
-    if (!resp.ok && resp.status !== 404) {
-      console.error('[Meeting-STT] 회의 삭제 실패', resp.status);
-      return;
-    }
-
-    // 현재 보고 있던 회의를 삭제했다면 오른쪽 뷰 초기화
-    if (currentMeetingId === id) {
-      currentMeetingId = null;
-      sttViewEl.textContent = '';
-      summaryViewEl.textContent = '';
-    }
-
-    fetchMeetingList();
-  } catch (err) {
-    console.error('[Meeting-STT] 회의 삭제 에러', err);
-  }
-}
-
-// 초기 진입 시 회의 리스트 불러오기
-fetchMeetingList();
-activateTab('stt');
+// (회의 리스트, 탭, 쿼터 관련 로직은 meetings_ui.js 로 이전)
 
 function writeWavString(view, offset, string) {
   for (let i = 0; i < string.length; i += 1) {
@@ -254,12 +118,10 @@ async function stopRecordingAndUpload() {
     console.log('[Meeting-STT] 서버 인식 결과 transcript:', data.transcript);
     console.log('[Meeting-STT] 서버 요약 결과 summary:', data.summary);
 
-    // 최신 회의 상세 조회로 오른쪽 뷰 업데이트
-    sttViewEl.textContent = data.transcript || '';
-    summaryViewEl.textContent = data.summary || '';
-
-    // 리스트 갱신 (새로 저장된 회의 포함)
-    fetchMeetingList();
+    // 화면 갱신은 meetings_ui.js 의 전역 헬퍼에 위임
+    if (window.meetingUI?.updateAfterRecord) {
+      window.meetingUI.updateAfterRecord(data);
+    }
   } catch (err) {
     console.error('[Meeting-STT] 요청 중 오류', err);
     statusEl.textContent = '요청 중 오류 발생';

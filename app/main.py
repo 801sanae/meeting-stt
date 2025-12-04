@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from app.config.db import init_db
-from app.routers import meetings, root
+from app.routers import meetings, root, admin_stt
 
 
 logger = logging.getLogger("meeting-stt")
@@ -47,3 +47,4 @@ async def http_exception_logger(request: Request, exc: HTTPException):
 
 app.include_router(root.router)
 app.include_router(meetings.router)
+app.include_router(admin_stt.router)
