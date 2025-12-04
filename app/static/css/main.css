@@ -1,0 +1,29 @@
+body {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  background-color: #020617; /* 아주 진한 네이비 */
+  color: #e5e7eb;            /* 밝은 회색 텍스트 */
+}
+
+main.meeting-container {
+  max-width: 720px;
+  margin: 40px auto;
+  padding: 24px 20px;
+  background-color: #020617;
+}
+
+button {
+  padding: 8px 16px;
+  margin-right: 8px;
+  font-size: 14px;
+}
+
+#status {
+  margin-top: 12px;
+}
+
+#result {
+  margin-top: 24px;
+  white-space: pre-wrap;
+  border-top: 1px solid #4b5563;
+  padding-top: 16px;
+}
