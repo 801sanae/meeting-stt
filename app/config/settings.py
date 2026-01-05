@@ -33,6 +33,14 @@ class Settings(BaseSettings):
     # Azure Speech 무료 쿼터 (시간)
     stt_free_quota_hours_per_month: float = 5.0
 
+    # Observability
+    enable_metrics: bool = True
+    loki_url: str | None = None
+    loki_auth_username: str | None = None
+    loki_auth_password: str | None = None
+    app_name: str = "meeting-stt"
+    environment: str = "development"
+
 
 @lru_cache
 def get_settings() -> Settings:

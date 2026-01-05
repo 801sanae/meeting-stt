@@ -17,4 +17,6 @@ dependencies = [
     "langchain",
     "langchain-openai",
     "langchain-core>=1.1.0",
+    "prometheus-fastapi-instrumentator>=7.0.0",
+    "python-logging-loki>=0.3.1",
 ]

@@ -6,12 +6,18 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.exception_handlers import http_exception_handler
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from prometheus_fastapi_instrumentator import Instrumentator
 
 from app.config.db import init_db
+from app.config.logging import setup_logging
+from app.config.settings import get_settings
 from app.routers import meetings, root, admin_stt
 
 
+setup_logging()
+
 logger = logging.getLogger("meeting-stt")
+settings = get_settings()
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -27,6 +33,13 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+if settings.enable_metrics:
+    Instrumentator(
+        excluded_handlers=["/metrics"],
+    ).instrument(app).expose(app, endpoint="/metrics")
+    logger.info("Prometheus metrics enabled at /metrics")
 
 
 # 정적 파일 (CSS/JS) 서빙
